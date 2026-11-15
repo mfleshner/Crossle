@@ -8,6 +8,9 @@ A two-word Wordle spin-off for phone browsers. Each round has a 5-letter word **
 - Solve a word and it locks in green. 6 tries per round, 20 rounds.
 - Guesses must be real words (dictionary loaded at runtime from the `an-array-of-english-words` npm package via jsDelivr; if it can't load, any letters are accepted).
 
+## Sharing
+After each round, **Share result** gives a spoiler-free emoji grid (one line per try: ➡️ across, ⬇️ down). The ☰ menu has **Share all rounds**. On phones it opens the share sheet; elsewhere it copies to the clipboard. The link in shared results is `SHARE_URL` in `index.html` (set to the GitHub Pages address).
+
 ## Run it
 Open `index.html` in a browser — it's a single self-contained file. Works with GitHub Pages too (Settings → Pages → deploy from `main`).
 

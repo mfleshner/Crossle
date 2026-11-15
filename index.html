@@ -58,6 +58,10 @@ main{flex:1;width:100%;max-width:520px;display:flex;flex-direction:column;align-
 .card p{margin:8px 0;color:#c8ccd2;line-height:1.45;font-size:15px}
 .btn{display:block;width:100%;margin-top:14px;padding:13px;border:none;border-radius:10px;background:var(--g);color:#fff;font:700 16px Outfit,sans-serif;cursor:pointer}
 .btn.alt{background:var(--b)}
+.btn.share{background:#3d6fd1}
+#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#eef0f3;color:#121417;font-weight:700;padding:10px 16px;border-radius:8px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.show{opacity:1}
+#copyBox{width:100%;height:150px;margin-top:10px;background:#121417;color:var(--text);border:1px solid var(--line);border-radius:8px;font:14px/1.3 system-ui;padding:8px;display:none}
 .answers{display:flex;gap:10px;justify-content:center;margin:12px 0;font-weight:800;letter-spacing:.15em;font-size:20px}
 .answers span{background:var(--b);padding:6px 10px;border-radius:8px}
 .dots{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin:12px 0}
@@ -94,6 +98,7 @@ main{flex:1;width:100%;max-width:520px;display:flex;flex-direction:column;align-
   <button class="btn" data-close>Let's play</button>
 </div></div>
 
+<div id="toast"></div>
 <div class="overlay" id="end"><div class="card" id="endCard"></div></div>
 <div class="overlay" id="stats"><div class="card" id="statsCard"></div></div>
 
@@ -338,9 +343,12 @@ function showEnd(){
     <p>${res.won?`Solved round ${S.round+1} in ${res.tries} ${res.tries===1?"try":"tries"}.`:`The words were:`}</p>
     <div class="answers"><span>${R.A} →</span><span>${R.D} ↓</span></div>
     ${last?summaryHTML():""}
+    <button class="btn share" id="shareBtn">Share result</button>
+    <textarea id="copyBox" readonly></textarea>
     <button class="btn" id="nextBtn">${last?"View all rounds":"Next round →"}</button>
     <button class="btn alt" data-close>Look at the board</button>`;
   open("end");
+  document.getElementById("shareBtn").onclick=()=>share(roundShareText());
   document.getElementById("nextBtn").onclick=()=>{
     close("end");
     if(last){showStats();return}
@@ -354,6 +362,29 @@ function goRound(i){
   }
   save(); msg(""); startRound();
 }
+// ---- sharing ----
+const SHARE_URL="https://mfleshner.github.io/Crossle/";
+const EMO={g:"🟩",y:"🟨",b:"⬛"};
+function roundShareText(){
+  const res=S.results[S.round];
+  const lines=S.guesses.map(g=>"➡️"+g.ea.map(x=>EMO[x]).join("")+" ⬇️"+g.ed.map(x=>EMO[x]).join(""));
+  return `Crossle ${S.round+1}/20 ${res&&res.won?res.tries:"X"}/${MAXG}\n\n${lines.join("\n")}\n\n${SHARE_URL}`;
+}
+function seasonShareText(){
+  const done=S.results.filter(Boolean), w=done.filter(r=>r.won);
+  const sq=S.results.map(r=>!r?"⬜":r.won?(["","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣"][r.tries]):"🟥");
+  return `Crossle — ${w.length}/${done.length} rounds won\n\n${sq.slice(0,10).join("")}\n${sq.slice(10).join("")}\n\n${SHARE_URL}`;
+}
+function toast(t){const e=document.getElementById("toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),1600)}
+async function share(text){
+  if(navigator.share&&/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)){
+    try{await navigator.share({text});return}catch(e){if(e&&e.name==="AbortError")return}
+  }
+  try{await navigator.clipboard.writeText(text);toast("Copied to clipboard");return}catch(e){}
+  // last resort: show the text so it can be copied by hand
+  document.querySelectorAll("#copyBox").forEach(b=>{b.value=text;b.style.display="block";b.focus();b.select()});
+  toast("Copy the text below");
+}
 function summaryHTML(){
   const done=S.results.filter(Boolean), w=done.filter(r=>r.won);
   const avg=w.length?(w.reduce((s,r)=>s+r.tries,0)/w.length).toFixed(1):"–";
@@ -365,9 +396,12 @@ function showStats(){
   c.innerHTML=`<h2>Rounds</h2>${summaryHTML()}
     <div class="dots">${dots}</div>
     <p style="font-size:13px;color:var(--muted)">Green shows tries used. Tap a round to play it (replaying clears its result).</p>
+    <button class="btn share" id="shareAllBtn">Share all rounds</button>
+    <textarea id="copyBox" readonly></textarea>
     <button class="btn alt" id="resetBtn">Reset all progress</button>
     <button class="btn" data-close>Close</button>`;
   c.querySelectorAll(".dot").forEach(d=>d.onclick=()=>{close("stats");goRound(+d.dataset.r)});
+  document.getElementById("shareAllBtn").onclick=()=>share(seasonShareText());
   document.getElementById("resetBtn").onclick=()=>{S=fresh();save();close("stats");msg("");startRound()};
   open("stats");
 }

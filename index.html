@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Crossle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#121417; --panel:#1c1f24; --line:#2e333b; --text:#eef0f3; --muted:#8b939e;
+  --g:#4c9a5a; --y:#c9a93a; --b:#3a3e45; --key:#5a606a; --sel:#7aa7ff;
+  --tile:min(13vw,58px); --mini:min(2.6vw,12px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Outfit,system-ui,sans-serif;overscroll-behavior:none}
+body{display:flex;flex-direction:column;align-items:center;user-select:none}
+header{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)}
+h1{margin:0;font-size:24px;font-weight:800;letter-spacing:.12em}
+h1 span{color:var(--g)}
+.hbtn{background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;width:34px;height:34px;font:700 16px Outfit,sans-serif;cursor:pointer}
+#roundLabel{font-size:14px;color:var(--muted);text-align:center;line-height:1.2}
+#roundLabel b{color:var(--text);font-size:16px}
+main{flex:1;width:100%;max-width:520px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 6px 6px;gap:8px;min-height:0}
+#history{display:flex;gap:6px;justify-content:center;min-height:calc(var(--mini)*5 + 4px)}
+.mini{display:grid;grid-template-columns:repeat(5,var(--mini));grid-template-rows:repeat(5,var(--mini));gap:1px;opacity:.95}
+.mini div{border-radius:2px}
+.mini .empty{visibility:hidden}
+.slot{width:calc(var(--mini)*5 + 4px);height:calc(var(--mini)*5 + 4px);border:1px dashed var(--line);border-radius:4px}
+#boardWrap{position:relative;margin-top:14px}
+#board{display:grid;grid-template-columns:repeat(5,var(--tile));grid-template-rows:repeat(5,var(--tile));gap:5px}
+.cell{border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:calc(var(--tile)*.55);cursor:pointer;position:relative}
+.cell.void{visibility:hidden}
+.cell.in{border:2px solid var(--line);background:var(--panel)}
+.cell.in.filled{border-color:#5d6470}
+.cell.in.hint{border-color:var(--g);color:#9fe0aa}
+.cell.in.sel{border-color:var(--sel);box-shadow:0 0 0 2px rgba(122,167,255,.25)}
+.cell.shared.in::after{content:"";position:absolute;inset:3px;border:1px dashed rgba(255,255,255,.18);border-radius:4px;pointer-events:none}
+.cell.lock{border:none}
+.cell.flip{animation:flip .5s ease both}
+@keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+.cell.pop{animation:pop .12s ease}
+@keyframes pop{50%{transform:scale(1.08)}}
+#board.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.tag{position:absolute;font-size:11px;color:var(--muted);letter-spacing:.1em;font-weight:700;white-space:nowrap}
+#msg{height:20px;font-size:14px;color:var(--muted);text-align:center}
+#kb{width:100%;display:flex;flex-direction:column;gap:6px;padding-bottom:env(safe-area-inset-bottom)}
+.krow{display:flex;gap:5px;justify-content:center}
+.key{flex:1;max-width:44px;height:54px;border:none;border-radius:6px;color:var(--text);font:700 17px Outfit,sans-serif;cursor:pointer;background:var(--key);padding:0}
+.key.wide{max-width:68px;flex:1.5;font-size:13px}
+.legend{display:flex;gap:14px;justify-content:center;font-size:11px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:18px;z-index:10}
+.overlay.show{display:flex}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;max-width:400px;width:100%;max-height:90vh;overflow:auto}
+.card h2{margin:0 0 10px;font-size:22px}
+.card p{margin:8px 0;color:#c8ccd2;line-height:1.45;font-size:15px}
+.btn{display:block;width:100%;margin-top:14px;padding:13px;border:none;border-radius:10px;background:var(--g);color:#fff;font:700 16px Outfit,sans-serif;cursor:pointer}
+.btn.alt{background:var(--b)}
+.answers{display:flex;gap:10px;justify-content:center;margin:12px 0;font-weight:800;letter-spacing:.15em;font-size:20px}
+.answers span{background:var(--b);padding:6px 10px;border-radius:8px}
+.dots{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin:12px 0}
+.dot{aspect-ratio:1;border-radius:6px;background:var(--b);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer}
+.dot.w{background:var(--g)} .dot.l{background:#8a3b3b} .dot.cur{outline:2px solid var(--sel)}
+.ex{display:inline-grid;grid-template-columns:repeat(2,22px);gap:3px;vertical-align:middle;margin-right:6px}
+.ex div{height:22px;border-radius:4px}
+</style>
+</head>
+<body>
+<header>
+  <button class="hbtn" id="helpBtn" aria-label="How to play">?</button>
+  <div style="text-align:center">
+    <h1>CROSS<span>LE</span></h1>
+    <div id="roundLabel"></div>
+  </div>
+  <button class="hbtn" id="statsBtn" aria-label="Rounds">☰</button>
+</header>
+<main>
+  <div id="history"></div>
+  <div id="boardWrap"><div id="board"></div></div>
+  <div id="msg"></div>
+  <div class="legend"><span><i style="background:linear-gradient(180deg,var(--g) 50%,var(--key) 50%)"></i>key top = across</span><span><i style="background:linear-gradient(180deg,var(--key) 50%,var(--y) 50%)"></i>key bottom = down</span></div>
+  <div id="kb"></div>
+</main>
+
+<div class="overlay" id="help"><div class="card">
+  <h2>How to play</h2>
+  <p>Guess <b>two</b> 5-letter words at once: one <b>across</b> and one <b>down</b>. They share a single letter where they cross — and the crossing point moves every round.</p>
+  <p>Fill all 9 squares and press <b>Enter</b>. Each word is scored on its own, Wordle-style: <b style="color:var(--g)">green</b> = right spot, <b style="color:var(--y)">yellow</b> = in that word elsewhere, gray = not in that word.</p>
+  <p><span class="ex"><div style="background:linear-gradient(135deg,var(--y) 50%,var(--b) 50%)"></div></span>The shared square can split: the top-left half is its score in the across word, the bottom-right half is its score in the down word.</p>
+  <p>Keyboard keys split the same way: top half for across, bottom half for down.</p>
+  <p>Solve a word and it locks in green. You get <b>6 tries</b> to solve both. 20 rounds in all.</p>
+  <button class="btn" data-close>Let's play</button>
+</div></div>
+
+<div class="overlay" id="end"><div class="card" id="endCard"></div></div>
+<div class="overlay" id="stats"><div class="card" id="statsCard"></div></div>
+
+<script>
+// [across, down, column where down crosses across, row (index in down word) where across crosses]
+const ROUNDS=[["PLANT","SPOON",0,1],["BREAD","STORM",1,3],["GHOST","CLOUD",2,2],["MAPLE","LEMON",3,0],["CHAIR","RIVER",4,0],["FLAME","OLIVE",1,1],["TIGER","SUGAR",2,2],["BEACH","OCEAN",3,1],["SNAKE","EAGLE",4,0],["QUILT","EQUIP",0,1],["HONEY","LUNAR",2,2],["PIANO","DANCE",3,2],["STONE","OTTER",1,2],["FROST","TRAIN",4,0],["MOUSE","LEMUR",0,2],["WHALE","SHARK",2,2],["GRAPE","APPLE",3,1],["CANDY","MAGIC",1,1],["NIGHT","STARS",4,1],["BRICK","PRISM",2,2]];
+const MAXG=6, KEY="crossle-v1";
+
+// ---- dictionary (loaded from CDN; falls back to "anything goes" if unreachable) ----
+let DICT=null, dictFailed=false;
+const DICT_SOURCES=[
+  "https://cdn.jsdelivr.net/npm/an-array-of-english-words@2.0.0/+esm",
+  "https://unpkg.com/an-array-of-english-words@2.0.0/index.js?module",
+  "https://cdn.jsdelivr.net/npm/an-array-of-english-words@1.3.1/+esm"
+];
+function findArray(m){
+  if(Array.isArray(m)) return m;
+  if(m&&typeof m==="object") for(const v of Object.values(m)){const a=findArray(v); if(a) return a;}
+  return null;
+}
+const dictReady=(async()=>{
+  for(const url of DICT_SOURCES){
+    try{
+      const arr=findArray(await import(url));
+      if(arr&&arr.length>1000){
+        DICT=new Set();
+        for(const w of arr) if(w.length===5&&/^[a-z]+$/.test(w)) DICT.add(w.toUpperCase());
+        ROUNDS.forEach(r=>{DICT.add(r[0]);DICT.add(r[1])});
+        return;
+      }
+    }catch(e){}
+  }
+  dictFailed=true;
+})();
+const isWord=w=>!DICT||DICT.has(w);
+const COL={g:"var(--g)",y:"var(--y)",b:"var(--b)",n:"var(--key)"};
+const RANK={n:0,b:1,y:2,g:3};
+
+let S=load()||{round:0,results:Array(20).fill(null),guesses:[]};
+let R, grid, sel, busy=false, revealGuess=null;
+
+function load(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+function score(g,ans){
+  const res=Array(5).fill("b"),cnt={};
+  for(let i=0;i<5;i++){ if(g[i]===ans[i]) res[i]="g"; else cnt[ans[i]]=(cnt[ans[i]]||0)+1; }
+  for(let i=0;i<5;i++){ if(res[i]!=="g"&&cnt[g[i]]>0){res[i]="y";cnt[g[i]]--;} }
+  return res;
+}
+const inA=(r,c)=>r===R.row, inD=(r,c)=>c===R.col, inPlay=(r,c)=>inA(r,c)||inD(r,c);
+const solvedA=()=>S.guesses.some(g=>g.a===R.A), solvedD=()=>S.guesses.some(g=>g.d===R.D);
+const editable=(r,c)=>inPlay(r,c)&&!(inA(r,c)&&solvedA())&&!(inD(r,c)&&solvedD());
+function order(){const o=[];for(let c=0;c<5;c++)o.push([R.row,c]);for(let r=0;r<5;r++)if(r!==R.row)o.push([r,R.col]);return o}
+function roundOver(){return S.results[S.round]!==null}
+
+function startRound(){
+  const [A,D,col,row]=ROUNDS[S.round]; R={A,D,col,row};
+  freshEntry();
+  render();
+  if(roundOver()) setTimeout(showEnd,200);
+}
+function freshEntry(){
+  grid=[...Array(5)].map(()=>Array(5).fill(""));
+  const last=S.guesses[S.guesses.length-1];
+  for(let i=0;i<5;i++){
+    if(solvedA()) grid[R.row][i]=R.A[i];
+    else if(last&&last.ea[i]==="g") grid[R.row][i]=R.A[i];
+    if(solvedD()) grid[i][R.col]=R.D[i];
+    else if(last&&last.ed[i]==="g") grid[i][R.col]=R.D[i];
+  }
+  const o=order().filter(([r,c])=>editable(r,c));
+  sel=(o.find(([r,c])=>!grid[r][c])||o[0]||[R.row,R.col]);
+}
+
+function cellColors(g,r,c){ // returns [acrossState|null, downState|null]
+  return [inA(r,c)?g.ea[c]:null, inD(r,c)?g.ed[r]:null];
+}
+function bgFor(a,d){
+  if(a&&d) return a===d?COL[a]:`linear-gradient(135deg,${COL[a]} 50%,${COL[d]} 50%)`;
+  return COL[a||d];
+}
+
+function render(){
+  document.getElementById("roundLabel").innerHTML=`Round <b>${S.round+1}</b> / 20 · Try ${Math.min(S.guesses.length+1,MAXG)} of ${MAXG}`;
+  // history
+  const h=document.getElementById("history"); h.innerHTML="";
+  for(let i=0;i<MAXG;i++){
+    const g=S.guesses[i];
+    if(!g){const s=document.createElement("div");s.className="slot";h.appendChild(s);continue}
+    const m=document.createElement("div");m.className="mini";
+    for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+      const d=document.createElement("div");
+      if(!inPlay(r,c)) d.className="empty"; else {const [a,dn]=cellColors(g,r,c);d.style.background=bgFor(a,dn)}
+      m.appendChild(d);
+    }
+    h.appendChild(m);
+  }
+  // board
+  const b=document.getElementById("board"); b.innerHTML="";
+  for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+    const d=document.createElement("div"); d.className="cell";
+    if(!inPlay(r,c)){d.classList.add("void");b.appendChild(d);continue}
+    if(r===R.row&&c===R.col) d.classList.add("shared");
+    if(revealGuess){
+      const [a,dn]=cellColors(revealGuess,r,c);
+      d.textContent=(inA(r,c)?revealGuess.a[c]:revealGuess.d[r]);
+      d.style.background=bgFor(a,dn); d.classList.add("lock","flip");
+      d.style.animationDelay=((inA(r,c)?c:r)*70)+"ms";
+    } else if(!editable(r,c)){
+      d.textContent=grid[r][c]; d.style.background=COL.g; d.classList.add("lock");
+    } else {
+      d.classList.add("in"); d.textContent=grid[r][c];
+      if(grid[r][c]) d.classList.add("filled");
+      if(grid[r][c]&&S.guesses.some(g=>(inA(r,c)&&g.ea[c]==="g"&&g.a[c]===grid[r][c])||(inD(r,c)&&g.ed[r]==="g"&&g.d[r]===grid[r][c]))) d.classList.add("hint");
+      if(sel&&sel[0]===r&&sel[1]===c&&!roundOver()) d.classList.add("sel");
+      d.onclick=()=>{if(busy||roundOver())return;sel=[r,c];render()};
+    }
+    b.appendChild(d);
+  }
+  // direction tags
+  const w=document.getElementById("boardWrap");
+  w.querySelectorAll(".tag").forEach(t=>t.remove());
+  const t1=document.createElement("div");t1.className="tag";t1.textContent="ACROSS →";
+  t1.style.top=`calc(${R.row}*(var(--tile) + 5px) + var(--tile)/2 - 7px)`;
+  if(R.col<=2){t1.style.left="auto";t1.style.right=`calc(-1*0px)`;}
+  const t2=document.createElement("div");t2.className="tag";t2.textContent="DOWN ↓";
+  t2.style.left=`calc(${R.col}*(var(--tile) + 5px))`; t2.style.top="-16px";
+  // put ACROSS label in an empty spot above/below the across row
+  const freeRow = R.row>0?R.row-1:R.row+1;
+  const freeCol = R.col>=3?0:3;
+  t1.style.top=`calc(${freeRow}*(var(--tile) + 5px) + var(--tile)/2 - 7px)`;
+  t1.style.right="auto";t1.style.left=`calc(${freeCol}*(var(--tile) + 5px) + 4px)`;
+  w.appendChild(t1); w.appendChild(t2);
+  renderKB();
+}
+
+function keyStates(){
+  const ka={},kd={};
+  for(const g of S.guesses){
+    for(let i=0;i<5;i++){
+      const a=g.a[i],sa=g.ea[i]; if(RANK[sa]>RANK[ka[a]||"n"]) ka[a]=sa;
+      const d=g.d[i],sd=g.ed[i]; if(RANK[sd]>RANK[kd[d]||"n"]) kd[d]=sd;
+    }
+  }
+  return [ka,kd];
+}
+function renderKB(){
+  const [ka,kd]=keyStates(), kb=document.getElementById("kb"); kb.innerHTML="";
+  ["QWERTYUIOP","ASDFGHJKL","+ZXCVBNM-"].forEach(row=>{
+    const rr=document.createElement("div");rr.className="krow";
+    for(const k of row){
+      const b=document.createElement("button");b.className="key";
+      if(k==="+"){b.textContent="ENTER";b.classList.add("wide");b.onclick=submit}
+      else if(k==="-"){b.textContent="⌫";b.classList.add("wide");b.onclick=back}
+      else{
+        b.textContent=k; b.onclick=()=>type(k);
+        const a=ka[k]||"n",d=kd[k]||"n";
+        b.style.background=`linear-gradient(180deg,${COL[a]} 50%,${COL[d]} 50%)`;
+      }
+      rr.appendChild(b);
+    }
+    kb.appendChild(rr);
+  });
+}
+
+function nextEditable(from,dir){
+  const o=order().filter(([r,c])=>editable(r,c));
+  let i=o.findIndex(([r,c])=>r===from[0]&&c===from[1]);
+  if(i<0) return o[0];
+  const j=i+dir; return (j>=0&&j<o.length)?o[j]:null;
+}
+function type(k){
+  if(busy||roundOver()||!sel||!editable(...sel))return;
+  const n=nextEditable(sel,1);
+  if(grid[sel[0]][sel[1]]&&!n) return;
+  grid[sel[0]][sel[1]]=k; if(n) sel=n;
+  msg(""); render();
+}
+function back(){
+  if(busy||roundOver()||!sel)return;
+  if(grid[sel[0]][sel[1]]&&editable(...sel)){grid[sel[0]][sel[1]]="";}
+  else{const p=nextEditable(sel,-1);if(p){sel=p;grid[p[0]][p[1]]="";}}
+  render();
+}
+function msg(t){document.getElementById("msg").textContent=t}
+
+let waitingDict=false;
+async function submit(){
+  if(busy||roundOver()||waitingDict)return;
+  if(!DICT&&!dictFailed){
+    waitingDict=true; msg("Loading dictionary…");
+    await Promise.race([dictReady,new Promise(r=>setTimeout(r,6000))]);
+    waitingDict=false; msg("");
+    if(!DICT&&!dictFailed){dictFailed=true;}
+  }
+  for(const [r,c] of order()) if(!grid[r][c]){
+    msg("Fill all 9 squares first");
+    const b=document.getElementById("board");b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake");return;
+  }
+  const a=grid[R.row].join(""), d=grid.map(row=>row[R.col]).join("");
+  const badA=!solvedA()&&!isWord(a), badD=!solvedD()&&!isWord(d);
+  if(badA||badD){
+    msg(badA&&badD?`${a} and ${d} aren't words`:`${badA?a:d} isn't in the word list`);
+    const b=document.getElementById("board");b.classList.remove("shake");void b.offsetWidth;b.classList.add("shake");
+    return;
+  }
+  if(dictFailed&&!S.warned){S.warned=true;msg("Couldn't load the dictionary — any letters allowed");}
+  const g={a,d,ea:score(a,R.A),ed:score(d,R.D)};
+  S.guesses.push(g);
+  const won=solvedA()&&solvedD(), lost=!won&&S.guesses.length>=MAXG;
+  if(won) S.results[S.round]={won:true,tries:S.guesses.length};
+  else if(lost) S.results[S.round]={won:false,tries:MAXG};
+  save();
+  busy=true; revealGuess=g; render();
+  if(!won&&!lost){
+    if(a===R.A&&!S.guesses.slice(0,-1).some(x=>x.a===R.A)) msg("Across solved! 🔒");
+    else if(d===R.D&&!S.guesses.slice(0,-1).some(x=>x.d===R.D)) msg("Down solved! 🔒");
+    else if(!(dictFailed&&S.guesses.length===1)) msg("");
+  }
+  setTimeout(()=>{
+    busy=false;
+    if(won||lost){ setTimeout(showEnd,250); render(); return; }
+    revealGuess=null; freshEntry(); render();
+  },1300);
+}
+
+function showEnd(){
+  const res=S.results[S.round], last=S.round===19;
+  const praise=["Genius!","Brilliant!","Excellent!","Great!","Nice!","Phew!"];
+  const c=document.getElementById("endCard");
+  c.innerHTML=`<h2>${res.won?praise[res.tries-1]:"Out of tries"}</h2>
+    <p>${res.won?`Solved round ${S.round+1} in ${res.tries} ${res.tries===1?"try":"tries"}.`:`The words were:`}</p>
+    <div class="answers"><span>${R.A} →</span><span>${R.D} ↓</span></div>
+    ${last?summaryHTML():""}
+    <button class="btn" id="nextBtn">${last?"View all rounds":"Next round →"}</button>
+    <button class="btn alt" data-close>Look at the board</button>`;
+  open("end");
+  document.getElementById("nextBtn").onclick=()=>{
+    close("end");
+    if(last){showStats();return}
+    goRound(S.round+1);
+  };
+}
+function goRound(i){
+  S.round=i; S.guesses=[]; revealGuess=null;
+  if(S.results[i]){ // replaying a finished round starts it fresh
+    S.results[i]=null;
+  }
+  save(); msg(""); startRound();
+}
+function summaryHTML(){
+  const done=S.results.filter(Boolean), w=done.filter(r=>r.won);
+  const avg=w.length?(w.reduce((s,r)=>s+r.tries,0)/w.length).toFixed(1):"–";
+  return `<p><b>${w.length}</b> of ${done.length} rounds won · average <b>${avg}</b> tries per win</p>`;
+}
+function showStats(){
+  const c=document.getElementById("statsCard");
+  const dots=S.results.map((r,i)=>`<div class="dot ${r?(r.won?"w":"l"):""} ${i===S.round?"cur":""}" data-r="${i}">${r&&r.won?r.tries:i+1}</div>`).join("");
+  c.innerHTML=`<h2>Rounds</h2>${summaryHTML()}
+    <div class="dots">${dots}</div>
+    <p style="font-size:13px;color:var(--muted)">Green shows tries used. Tap a round to play it (replaying clears its result).</p>
+    <button class="btn alt" id="resetBtn">Reset all progress</button>
+    <button class="btn" data-close>Close</button>`;
+  c.querySelectorAll(".dot").forEach(d=>d.onclick=()=>{close("stats");goRound(+d.dataset.r)});
+  document.getElementById("resetBtn").onclick=()=>{S={round:0,results:Array(20).fill(null),guesses:[]};save();close("stats");msg("");startRound()};
+  open("stats");
+}
+function open(id){document.getElementById(id).classList.add("show")}
+function close(id){document.getElementById(id).classList.remove("show")}
+document.addEventListener("click",e=>{if(e.target.matches("[data-close]")||e.target.classList.contains("overlay"))e.target.closest(".overlay").classList.remove("show")});
+document.getElementById("helpBtn").onclick=()=>open("help");
+document.getElementById("statsBtn").onclick=showStats;
+document.addEventListener("keydown",e=>{
+  if(document.querySelector(".overlay.show"))return;
+  if(e.key==="Enter")submit(); else if(e.key==="Backspace")back();
+  else if(/^[a-z]$/i.test(e.key))type(e.key.toUpperCase());
+  else if(e.key.startsWith("Arrow")&&sel){
+    const [dr,dc]={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+    const r=sel[0]+dr,c=sel[1]+dc; if(r>=0&&r<5&&c>=0&&c<5&&editable(r,c)){sel=[r,c];render()}
+  }
+});
+startRound();
+if(!load()||(!S.guesses.length&&S.round===0&&!S.results.some(Boolean))) open("help");
+</script>
+</body>
+</html>

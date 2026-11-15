@@ -132,10 +132,14 @@ const isWord=w=>!DICT||DICT.has(w);
 const COL={g:"var(--g)",y:"var(--y)",b:"var(--b)",n:"var(--key)"};
 const RANK={n:0,b:1,y:2,g:3};
 
-let S=load()||{round:0,results:Array(20).fill(null),guesses:[]};
+function fresh(){return {round:0,results:Array(20).fill(null),guesses:[]}}
+let S=load();
+if(!S||typeof S.round!=="number"||S.round<0||S.round>19||!Array.isArray(S.results)||!Array.isArray(S.guesses)) S=fresh();
+while(S.results.length<20) S.results.push(null);
 let R, grid, sel, busy=false, revealGuess=null;
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}}
+function saveDraft(){S.draft={round:S.round,n:S.guesses.length,grid,sel};save()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 function score(g,ans){
@@ -165,7 +169,12 @@ function freshEntry(){
     if(solvedD()) grid[i][R.col]=R.D[i];
     else if(last&&last.ed[i]==="g") grid[i][R.col]=R.D[i];
   }
+  const dr=S.draft;
+  if(dr&&dr.round===S.round&&dr.n===S.guesses.length&&Array.isArray(dr.grid)){
+    for(const [r,c] of order()) if(editable(r,c)&&dr.grid[r]&&dr.grid[r][c]) grid[r][c]=dr.grid[r][c];
+  }
   const o=order().filter(([r,c])=>editable(r,c));
+  if(dr&&dr.round===S.round&&dr.n===S.guesses.length&&dr.sel&&editable(...dr.sel)){sel=dr.sel;return}
   sel=(o.find(([r,c])=>!grid[r][c])||o[0]||[R.row,R.col]);
 }
 
@@ -210,7 +219,7 @@ function render(){
       if(grid[r][c]) d.classList.add("filled");
       if(grid[r][c]&&S.guesses.some(g=>(inA(r,c)&&g.ea[c]==="g"&&g.a[c]===grid[r][c])||(inD(r,c)&&g.ed[r]==="g"&&g.d[r]===grid[r][c]))) d.classList.add("hint");
       if(sel&&sel[0]===r&&sel[1]===c&&!roundOver()) d.classList.add("sel");
-      d.onclick=()=>{if(busy||roundOver())return;sel=[r,c];render()};
+      d.onclick=()=>{if(busy||roundOver())return;sel=[r,c];render();saveDraft()};
     }
     b.appendChild(d);
   }
@@ -271,13 +280,13 @@ function type(k){
   const n=nextEditable(sel,1);
   if(grid[sel[0]][sel[1]]&&!n) return;
   grid[sel[0]][sel[1]]=k; if(n) sel=n;
-  msg(""); render();
+  msg(""); render(); saveDraft();
 }
 function back(){
   if(busy||roundOver()||!sel)return;
   if(grid[sel[0]][sel[1]]&&editable(...sel)){grid[sel[0]][sel[1]]="";}
   else{const p=nextEditable(sel,-1);if(p){sel=p;grid[p[0]][p[1]]="";}}
-  render();
+  render(); saveDraft();
 }
 function msg(t){document.getElementById("msg").textContent=t}
 
@@ -303,7 +312,7 @@ async function submit(){
   }
   if(dictFailed&&!S.warned){S.warned=true;msg("Couldn't load the dictionary — any letters allowed");}
   const g={a,d,ea:score(a,R.A),ed:score(d,R.D)};
-  S.guesses.push(g);
+  S.guesses.push(g); S.draft=null;
   const won=solvedA()&&solvedD(), lost=!won&&S.guesses.length>=MAXG;
   if(won) S.results[S.round]={won:true,tries:S.guesses.length};
   else if(lost) S.results[S.round]={won:false,tries:MAXG};
@@ -339,7 +348,7 @@ function showEnd(){
   };
 }
 function goRound(i){
-  S.round=i; S.guesses=[]; revealGuess=null;
+  S.round=i; S.guesses=[]; S.draft=null; revealGuess=null;
   if(S.results[i]){ // replaying a finished round starts it fresh
     S.results[i]=null;
   }
@@ -359,7 +368,7 @@ function showStats(){
     <button class="btn alt" id="resetBtn">Reset all progress</button>
     <button class="btn" data-close>Close</button>`;
   c.querySelectorAll(".dot").forEach(d=>d.onclick=()=>{close("stats");goRound(+d.dataset.r)});
-  document.getElementById("resetBtn").onclick=()=>{S={round:0,results:Array(20).fill(null),guesses:[]};save();close("stats");msg("");startRound()};
+  document.getElementById("resetBtn").onclick=()=>{S=fresh();save();close("stats");msg("");startRound()};
   open("stats");
 }
 function open(id){document.getElementById(id).classList.add("show")}
@@ -376,6 +385,8 @@ document.addEventListener("keydown",e=>{
     const r=sel[0]+dr,c=sel[1]+dc; if(r>=0&&r<5&&c>=0&&c<5&&editable(r,c)){sel=[r,c];render()}
   }
 });
+window.addEventListener("pagehide",save);
+document.addEventListener("visibilitychange",()=>{if(document.hidden)save()});
 startRound();
 if(!load()||(!S.guesses.length&&S.round===0&&!S.results.some(Boolean))) open("help");
 </script>

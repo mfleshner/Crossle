@@ -11,4 +11,4 @@ A two-word Wordle spin-off for phone browsers. Each round has a 5-letter word **
 ## Run it
 Open `index.html` in a browser — it's a single self-contained file. Works with GitHub Pages too (Settings → Pages → deploy from `main`).
 
-Progress is saved in the browser's localStorage.
+Progress (current round, guesses, letters typed but not yet submitted, and every round's result) is saved in the browser's localStorage, so closing or refreshing the page picks up right where you left off. Progress is per browser/device.
